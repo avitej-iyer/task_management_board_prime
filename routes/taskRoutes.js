@@ -60,33 +60,35 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 router.put('/:id', authMiddleware, async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.params; // Extract the task ID from the URL
     const { title, description, status, assignedTo } = req.body;
 
     try {
         const db = client.db('task_db');
         const tasks = db.collection('tasks');
 
-        console.log('Query Criteria:', { _id: new ObjectId(id), createdBy: req.user.id });
+
+        const query = { _id: new ObjectId(id), createdBy: req.user.id.trim() }; // Trim whitespace
+        console.log('Query Sent to MongoDB:', query);
 
         const updatedTask = await tasks.findOneAndUpdate(
-            { _id: new ObjectId(id) }, // Query criteria
+            { _id: new ObjectId(id), createdBy: req.user.id },
             { $set: { title, description, status, assignedTo } },
             { returnDocument: 'after' }
         );
 
-        if (!updatedTask.value) {
+        if (!updatedTask) {
             console.error('Task not found or unauthorized');
             return res.status(404).json({ error: 'Task not found or unauthorized' });
         }
 
-        console.log('Updated Task:', updatedTask.value); // Log the updated task
         res.status(200).json(updatedTask.value);
     } catch (err) {
-        console.error('Error updating task:', err.message);
+        console.error('Error during task update:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
+
 
 
 
